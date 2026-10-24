@@ -1,0 +1,13 @@
+{
+  "domain": "hvac_zone",
+  "name": "HVAC Zone",
+  "codeowners": ["@jrytio"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/jrytio/ha-hvac-zone",
+  "integration_type": "helper",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/jrytio/ha-hvac-zone/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
