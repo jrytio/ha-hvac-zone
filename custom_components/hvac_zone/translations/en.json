@@ -1,0 +1,178 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add an HVAC zone",
+        "description": "The zone starts in shadow mode: it computes everything and writes nothing until you turn on Write to thermostat.",
+        "data": {
+          "name": "Name",
+          "thermostat": "Thermostat",
+          "room_sensors": "Room temperatures",
+          "spread_sensors": "Rooms to balance",
+          "humidity_sensor": "Humidity",
+          "outdoor_mean_sensor": "Outdoor 24 h mean temperature"
+        },
+        "data_description": {
+          "thermostat": "The real thermostat. The zone keeps it in heat/cool and writes only a low/high pair.",
+          "room_sensors": "Their average is the temperature the zone controls to.",
+          "spread_sensors": "Rooms compared for fan circulation (warmest minus coldest). Leave empty to use the room sensors.",
+          "humidity_sensor": "Indoor humidity, for humidity events and the fan's wet-coil guards.",
+          "outdoor_mean_sensor": "A 24-hour mean of outdoor temperature. It sets the day cool point."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This thermostat already runs a zone."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Zone sensors",
+        "data": {
+          "room_sensors": "Room temperatures",
+          "spread_sensors": "Rooms to balance",
+          "humidity_sensor": "Humidity",
+          "outdoor_mean_sensor": "Outdoor 24 h mean temperature"
+        },
+        "data_description": {
+          "room_sensors": "Their average is the temperature the zone controls to.",
+          "spread_sensors": "Rooms compared for fan circulation (warmest minus coldest). Leave empty to use the room sensors.",
+          "humidity_sensor": "Indoor humidity, for humidity events and the fan's wet-coil guards.",
+          "outdoor_mean_sensor": "A 24-hour mean of outdoor temperature. It sets the day cool point."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "humidity_event": {
+        "name": "Humidity event"
+      },
+      "wall_override": {
+        "name": "Wall change held"
+      }
+    },
+    "button": {
+      "cooler": {
+        "name": "Cooler for a while"
+      },
+      "warmer": {
+        "name": "Warmer for a while"
+      },
+      "resume": {
+        "name": "Back to schedule"
+      }
+    },
+    "number": {
+      "cool_hot": {
+        "name": "Cool point, hot weather"
+      },
+      "cool_mild": {
+        "name": "Cool point, mild weather"
+      },
+      "cool_cold": {
+        "name": "Cool point, cold weather"
+      },
+      "outdoor_hot": {
+        "name": "Outdoor mean, hot"
+      },
+      "outdoor_mild": {
+        "name": "Outdoor mean, mild"
+      },
+      "outdoor_cold": {
+        "name": "Outdoor mean, cold"
+      },
+      "sleep_cool": {
+        "name": "Sleep cool point"
+      },
+      "gap": {
+        "name": "Heat/cool gap"
+      },
+      "bump_degrees": {
+        "name": "Bump size"
+      },
+      "bump_hours": {
+        "name": "Bump length"
+      },
+      "manual_hold_hours": {
+        "name": "Wall change hold"
+      },
+      "failsafe_floor": {
+        "name": "Failsafe heat floor"
+      },
+      "failsafe_ceiling": {
+        "name": "Failsafe cool ceiling"
+      },
+      "min_gap": {
+        "name": "Thermostat minimum gap"
+      },
+      "max_offset": {
+        "name": "Offset limit"
+      },
+      "humidity_engage": {
+        "name": "Humidity event on above"
+      },
+      "humidity_release": {
+        "name": "Humidity event off below"
+      },
+      "humidity_budget": {
+        "name": "Humidity event budget"
+      },
+      "humidity_floor": {
+        "name": "Humidity event floor"
+      },
+      "fan_spread_continuous": {
+        "name": "Fan always on above"
+      },
+      "fan_spread_pulsed": {
+        "name": "Fan pulsed above"
+      },
+      "fan_max_humidity": {
+        "name": "Fan humidity ceiling"
+      },
+      "fan_humidity_rise": {
+        "name": "Fan stops on humidity rise"
+      },
+      "fan_holdoff_minutes": {
+        "name": "Fan wait after cooling"
+      }
+    },
+    "sensor": {
+      "offset": {
+        "name": "Thermostat offset"
+      },
+      "spread": {
+        "name": "Room spread"
+      },
+      "status": {
+        "name": "Status"
+      },
+      "fan": {
+        "name": "Fan reason"
+      }
+    },
+    "switch": {
+      "write": {
+        "name": "Write to thermostat"
+      },
+      "fan_circulation": {
+        "name": "Fan circulation"
+      }
+    },
+    "time": {
+      "day_start": {
+        "name": "Day starts"
+      },
+      "sleep_start": {
+        "name": "Sleep starts"
+      },
+      "fan_start": {
+        "name": "Fan window starts"
+      },
+      "fan_end": {
+        "name": "Fan window ends"
+      }
+    }
+  }
+}
