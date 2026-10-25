@@ -21,6 +21,12 @@ class Readings:
     spread_temps: tuple[float, ...] = ()
     humidity: float | None = None
     outdoor_mean: float | None = None
+    outdoor_now: float | None = None
+
+    @property
+    def outdoor(self) -> float | None:
+        """The current outdoor temperature, else the mean."""
+        return self.outdoor_now if self.outdoor_now is not None else self.outdoor_mean
 
     @property
     def room_average(self) -> float | None:
@@ -97,6 +103,7 @@ class Written:
     at: datetime
     seen_low: float | None = None
     seen_high: float | None = None
+    retry: bool = False
 
 
 @dataclass(slots=True)
@@ -111,6 +118,7 @@ class ZoneState:
     proposed: tuple[int, int] | None = None
     written: Written | None = None
     cooling: bool = False
+    heat_allowed: bool = True
     last_cooling_end: datetime | None = None
     fan_written: str | None = None
     fan_written_at: datetime | None = None
@@ -140,6 +148,7 @@ class ZoneState:
             "written": self.written
             and {**asdict(self.written), "at": _dt(self.written.at)},
             "cooling": self.cooling,
+            "heat_allowed": self.heat_allowed,
             "last_cooling_end": _dt(self.last_cooling_end),
             "fan_written": self.fan_written,
             "fan_written_at": _dt(self.fan_written_at),
@@ -180,8 +189,10 @@ class ZoneState:
                     _parse(written["at"]),
                     written.get("seen_low"),
                     written.get("seen_high"),
+                    written.get("retry", False),
                 ),
                 cooling=data.get("cooling", False),
+                heat_allowed=data.get("heat_allowed", True),
                 last_cooling_end=_parse(data.get("last_cooling_end")),
                 fan_written=data.get("fan_written"),
                 fan_written_at=_parse(data.get("fan_written_at")),

@@ -40,7 +40,7 @@ usually built around it.
 | Cool point, sleep | Sleep cool setting (69) |
 | Bump | "Cooler/Warmer for a while", or setting the zone's climate entity, shifts the points for *bump hours*. It ends at the next period boundary |
 | Humidity event | Starts when RH rises above 58% and ends when it falls below 52%. While it's on, the cool point is lowered to max(66, engage avg − 3, ⌊avg⌋ − 1), re-stepped every 15 min. This makes the AC run to remove moisture, bounded to 3°F per event |
-| Heat point | Cool point − gap |
+| Heat point | Cool point − gap, but only while it's cold outside: below *heat only below outdoor* (50°F; current outdoor reading, else the 24 h mean, 1°F hysteresis). Otherwise it's held at *heat point when warm outside* (62°F), so the heat stays off but still guards against freezing. A Warmer bump heats anyway. |
 | Offset | EMA (≈30 min) of thermostat temp − room average, clamped to ±5 |
 | Written pair | round(point + offset). Hysteresis: a written value moves only when its target is ≥ 0.75°F away |
 | Failsafe | low ∈ [floor, ceiling − min gap], high ∈ [floor + min gap, ceiling], high − low ≥ min gap |

@@ -35,6 +35,8 @@ NUMBER_SPECS: tuple[NumberSpec, ...] = (
     NumberSpec("outdoor_cold", "Outdoor mean, cold", 0, 70, 1, TEMP),
     NumberSpec("sleep_cool", "Sleep cool point", 64, 80, 1, TEMP),
     NumberSpec("gap", "Heat/cool gap", 4, 10, 1, TEMP),
+    NumberSpec("heat_outdoor_below", "Heat only below outdoor", 30, 70, 1, TEMP),
+    NumberSpec("heat_idle", "Heat point when warm outside", 50, 68, 1, TEMP),
     NumberSpec("bump_degrees", "Bump size", 1, 5, 1, TEMP),
     NumberSpec("bump_hours", "Bump length", 0.5, 8, 0.5, HOURS),
     NumberSpec("manual_hold_hours", "Wall change hold", 0.5, 8, 0.5, HOURS),
@@ -71,6 +73,8 @@ class ZoneSettings:
     outdoor_cold: float = 45
     sleep_cool: float = 69
     gap: float = 5
+    heat_outdoor_below: float = 50
+    heat_idle: float = 62
     bump_degrees: float = 2
     bump_hours: float = 3
     manual_hold_hours: float = 3

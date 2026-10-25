@@ -30,6 +30,7 @@ from .models import (
 from .settings import ZoneSettings
 
 ECHO_GRACE = timedelta(minutes=2)
+HEAT_HYSTERESIS = 1.0
 OFFSET_TIME_CONSTANT = timedelta(minutes=30)
 HUMIDITY_STEP = timedelta(minutes=15)
 MAX_BUMP = 5
@@ -46,6 +47,7 @@ class Decision:
     low: int
     high: int
     write_band: bool
+    retry: bool
     fan_mode: str | None
     fan_band: str
     fan_reason: str
@@ -97,8 +99,10 @@ class ZoneEngine:
         self.state.written = None
         self.state.fan_override_until = None
 
-    def record_write(self, now: datetime, low: int, high: int) -> None:
-        self.state.written = Written(low, high, now)
+    def record_write(
+        self, now: datetime, low: int, high: int, *, retry: bool = False
+    ) -> None:
+        self.state.written = Written(low, high, now, retry=retry)
         self.state.override = None
 
     def record_fan_write(self, now: datetime, mode: str | None) -> None:
@@ -153,6 +157,7 @@ class ZoneEngine:
 
         cool = self._humidity(now, readings, average, cool, reasons)
         heat = min(heat, cool - s.gap) if not bump else min(heat, cool - 1)
+        heat = self._gate_heat(readings, bump, heat, reasons)
 
         offset = st.offset if st.offset is not None else 0.0
         offset = max(-s.max_offset, min(s.max_offset, offset))
@@ -162,7 +167,7 @@ class ZoneEngine:
         low, high = clamp_band(low, high, s)
         st.proposed = (low, high)
 
-        write_band = False
+        write_band = retry = False
         if st.override:
             reasons.append(f"wall change held until {st.override.until:%H:%M}")
         elif not thermostat.available:
@@ -174,6 +179,17 @@ class ZoneEngine:
                 or (written.low, written.high) != (low, high)
                 or thermostat.hvac_mode != HEAT_COOL
             )
+            if not write_band and written is not None and _not_applied(now, written):
+                # The thermostat settled on something other than what we sent,
+                # e.g. it clamped one setpoint against the other. Try once more.
+                if written.retry:
+                    reasons.append(
+                        f"thermostat holds {written.seen_low:.0f}/"
+                        f"{written.seen_high:.0f}, not {low}/{high}"
+                    )
+                else:
+                    write_band = retry = True
+                    reasons.append("thermostat adjusted the band, rewriting")
 
         fan_mode, fan_band, fan_reason = self._fan(
             now, readings, thermostat, fan_enabled
@@ -190,6 +206,7 @@ class ZoneEngine:
             low=low,
             high=high,
             write_band=write_band,
+            retry=retry,
             fan_mode=fan_mode,
             fan_band=fan_band,
             fan_reason=fan_reason,
@@ -198,6 +215,29 @@ class ZoneEngine:
         )
 
     # ── Pieces ─────────────────────────────────────────────────────────────
+
+    def _gate_heat(
+        self,
+        readings: Readings,
+        bump: Bump | None,
+        heat: float,
+        reasons: list[str],
+    ) -> float:
+        """Hold the heat point down unless it is cold outside.
+
+        A bump toward warmer still heats: someone asked for it.
+        """
+        s, st = self.settings, self.state
+        outdoor = readings.outdoor
+        if outdoor is not None:
+            if st.heat_allowed and outdoor >= s.heat_outdoor_below + HEAT_HYSTERESIS:
+                st.heat_allowed = False
+            elif not st.heat_allowed and outdoor < s.heat_outdoor_below:
+                st.heat_allowed = True
+        if st.heat_allowed or (bump and bump.heat_delta > 0):
+            return heat
+        reasons.append(f"heat held at {s.heat_idle:.0f}°F, {outdoor:.0f}°F outside")
+        return min(heat, s.heat_idle)
 
     def _base_cool(self, now: datetime, readings: Readings) -> float:
         if is_day(now, self.settings):
@@ -372,6 +412,15 @@ class ZoneEngine:
         elif mode == thermostat.fan_mode and mode == st.fan_written:
             mode = None
         return mode, decision.band, decision.reason
+
+
+def _not_applied(now: datetime, written: Written) -> bool:
+    """After the echo grace, did the thermostat keep a different band?"""
+    if now - written.at < ECHO_GRACE:
+        return False
+    return _differs(written.seen_low, written.low) or _differs(
+        written.seen_high, written.high
+    )
 
 
 def _differs(actual: float | None, expected: float | None) -> bool:

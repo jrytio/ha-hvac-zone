@@ -36,6 +36,7 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_HUMIDITY,
     CONF_OUTDOOR_MEAN,
+    CONF_OUTDOOR_NOW,
     CONF_ROOM_SENSORS,
     CONF_SPREAD_SENSORS,
     CONF_THERMOSTAT,
@@ -43,6 +44,7 @@ from .const import (
     SAVE_DELAY,
     STORE_VERSION,
     TICK,
+    WIDEN_PAUSE,
 )
 from .lib import (
     HEAT_COOL,
@@ -80,6 +82,7 @@ class ZoneCoordinator(DataUpdateCoordinator[Decision]):
         self.spread_sensors: list[str] = list(config.get(CONF_SPREAD_SENSORS, []))
         self.humidity_sensor: str | None = config.get(CONF_HUMIDITY)
         self.outdoor_sensor: str | None = config.get(CONF_OUTDOOR_MEAN)
+        self.outdoor_now_sensor: str | None = config.get(CONF_OUTDOOR_NOW)
         self.engine = ZoneEngine(ZoneSettings())
         self.writing = False
         self.fan_enabled = False
@@ -181,22 +184,18 @@ class ZoneCoordinator(DataUpdateCoordinator[Decision]):
         self.last_error = None
         if decision.write_band:
             try:
-                await self.hass.services.async_call(
-                    CLIMATE_DOMAIN,
-                    SERVICE_SET_TEMPERATURE,
-                    {
-                        ATTR_ENTITY_ID: self.thermostat_id,
-                        ATTR_HVAC_MODE: HEAT_COOL,
-                        ATTR_TARGET_TEMP_LOW: decision.low,
-                        ATTR_TARGET_TEMP_HIGH: decision.high,
-                    },
-                    blocking=True,
-                )
+                wide = self._widened(decision.low, decision.high)
+                if wide is not None:
+                    await self._set_band(*wide)
+                    await asyncio.sleep(WIDEN_PAUSE)
+                await self._set_band(decision.low, decision.high)
             except HomeAssistantError as err:
                 self.last_error = f"band write failed: {err}"
                 _LOGGER.warning("%s: %s", self.thermostat_id, self.last_error)
             else:
-                self.engine.record_write(now, decision.low, decision.high)
+                self.engine.record_write(
+                    now, decision.low, decision.high, retry=decision.retry
+                )
         if decision.fan_mode is not None:
             try:
                 await self.hass.services.async_call(
@@ -213,6 +212,39 @@ class ZoneCoordinator(DataUpdateCoordinator[Decision]):
                 _LOGGER.warning("%s: %s", self.thermostat_id, self.last_error)
             else:
                 self.engine.record_fan_write(now, decision.fan_mode)
+
+    def _widened(self, low: int, high: int) -> tuple[int, int] | None:
+        """The band covering both the current and the new one, if different.
+
+        A thermostat that keeps a minimum gap between its setpoints may clamp
+        the new low against the old high (or the reverse) when both move the
+        same way. Widening first means the gap never shrinks on the way.
+        """
+        current = self.thermostat
+        if (
+            current.hvac_mode != HEAT_COOL
+            or current.target_low is None
+            or current.target_high is None
+        ):
+            return None
+        wide = (
+            min(round(current.target_low), low),
+            max(round(current.target_high), high),
+        )
+        return wide if wide != (low, high) else None
+
+    async def _set_band(self, low: int, high: int) -> None:
+        await self.hass.services.async_call(
+            CLIMATE_DOMAIN,
+            SERVICE_SET_TEMPERATURE,
+            {
+                ATTR_ENTITY_ID: self.thermostat_id,
+                ATTR_HVAC_MODE: HEAT_COOL,
+                ATTR_TARGET_TEMP_LOW: low,
+                ATTR_TARGET_TEMP_HIGH: high,
+            },
+            blocking=True,
+        )
 
     # ── Reading Home Assistant ─────────────────────────────────────────────
 
@@ -237,6 +269,7 @@ class ZoneCoordinator(DataUpdateCoordinator[Decision]):
             spread_temps=self._numbers(self.spread_sensors),
             humidity=self._number(self.humidity_sensor),
             outdoor_mean=self._number(self.outdoor_sensor),
+            outdoor_now=self._number(self.outdoor_now_sensor),
         )
 
     def _read_thermostat(self) -> Thermostat:
