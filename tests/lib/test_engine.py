@@ -40,6 +40,8 @@ class Zone:
         self.writing = True
         self.fan_enabled = True
         self.writes = 0
+        # How the thermostat changes a band it is sent, if at all.
+        self.adjust = lambda low, high: (low, high)
 
     def at(self, **delta) -> Zone:
         self.now += timedelta(**delta)
@@ -62,14 +64,15 @@ class Zone:
             fan_enabled=self.fan_enabled,
         )
         if self.writing and d.write_band:
+            low, high = self.adjust(d.low, d.high)
             self.thermostat = replace(
                 self.thermostat,
                 hvac_mode=HEAT_COOL,
-                target_low=float(d.low),
-                target_high=float(d.high),
+                target_low=float(low),
+                target_high=float(high),
                 target_temperature=None,
             )
-            self.engine.record_write(self.now, d.low, d.high)
+            self.engine.record_write(self.now, d.low, d.high, retry=d.retry)
             self.writes += 1
         if self.writing and d.fan_mode is not None:
             self.thermostat = replace(self.thermostat, fan_mode=d.fan_mode)
@@ -172,7 +175,8 @@ def test_the_echo_of_our_own_write_is_not_a_wall_change():
     z.tick()
     z.at(minutes=10).tick()
     assert z.engine.state.override is None
-    assert z.writes == 1
+    # Not a wall change, but not what we sent either: rewritten once.
+    assert z.writes == 2
 
 
 def test_wall_change_is_held_then_released():
@@ -317,3 +321,38 @@ def test_offset_follows_slowly():
     z.offset = 4.0
     d = z.at(minutes=30).tick()
     assert 3.2 < d.offset < 3.3  # 1 - e^-1 of the way
+
+
+# ── Thermostat adjusting what it is sent ──────────────────────────────────
+
+
+def test_adjusted_band_is_rewritten_once():
+    z = Zone()
+    z.tick()
+    z.adjust = lambda low, high: (low - 2, high)
+    z.engine.bump(z.now, -2)
+    z.at(seconds=10).tick()  # writes 67/72, thermostat keeps 65/72
+    assert z.writes == 2
+    z.at(seconds=30).tick()  # echo: recorded, not a wall change
+    z.adjust = lambda low, high: (low, high)
+    d = z.at(minutes=2).tick()
+    assert d.retry
+    assert z.writes == 3
+    assert z.band == (HEAT_COOL, 67.0, 72.0)
+    z.at(minutes=5).tick()
+    assert z.writes == 3
+    assert z.engine.state.override is None
+
+
+def test_a_band_the_thermostat_refuses_is_retried_only_once():
+    z = Zone()
+    z.adjust = lambda low, high: (low - 2, high)
+    z.tick()
+    z.at(seconds=30).tick()
+    z.at(minutes=2).tick()
+    assert z.writes == 2
+    z.at(seconds=30).tick()
+    d = z.at(minutes=5).tick()
+    assert z.writes == 2
+    assert "thermostat holds 67/74, not 69/74" in d.status
+    assert z.engine.state.override is None

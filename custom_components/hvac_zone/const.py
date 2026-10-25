@@ -13,3 +13,5 @@ CONF_OUTDOOR_MEAN = "outdoor_mean_sensor"
 TICK = timedelta(minutes=1)
 STORE_VERSION = 1
 SAVE_DELAY = 30
+# Time the thermostat gets to apply a widened band before the final one.
+WIDEN_PAUSE = 3

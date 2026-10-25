@@ -97,6 +97,7 @@ class Written:
     at: datetime
     seen_low: float | None = None
     seen_high: float | None = None
+    retry: bool = False
 
 
 @dataclass(slots=True)
@@ -180,6 +181,7 @@ class ZoneState:
                     _parse(written["at"]),
                     written.get("seen_low"),
                     written.get("seen_high"),
+                    written.get("retry", False),
                 ),
                 cooling=data.get("cooling", False),
                 last_cooling_end=_parse(data.get("last_cooling_end")),

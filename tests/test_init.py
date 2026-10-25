@@ -1,6 +1,7 @@
 """The zone end to end: shadow mode, writing, wall changes, buttons."""
 
 from datetime import timedelta
+from unittest.mock import patch
 
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState
@@ -184,3 +185,19 @@ async def test_unavailable_sensors_and_diagnostics(
     info = await async_get_config_entry_diagnostics(hass, zone_entry)
     assert info["thermostat"]["available"] is False
     assert info["decision"]["write_band"] is False
+
+
+async def test_band_is_widened_before_it_moves(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory, house, calls, zone_entry
+) -> None:
+    """Raising both points goes through a wider band, so the gap never shrinks."""
+    freezer.move_to(NOON)
+    set_thermostat(hass, "heat_cool", target_temp_low=68, target_temp_high=73)
+    with patch("custom_components.hvac_zone.coordinator.WIDEN_PAUSE", 0):
+        await setup_integration(hass)
+        await switch_on(hass, "switch.downstairs_zone_write_to_thermostat")
+    writes = [
+        (c.data["target_temp_low"], c.data["target_temp_high"])
+        for c in calls["set_temperature"]
+    ]
+    assert writes == [(68, 78), (73, 78)]
