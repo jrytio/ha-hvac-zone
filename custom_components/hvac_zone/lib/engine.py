@@ -30,6 +30,7 @@ from .models import (
 from .settings import ZoneSettings
 
 ECHO_GRACE = timedelta(minutes=2)
+HEAT_HYSTERESIS = 1.0
 OFFSET_TIME_CONSTANT = timedelta(minutes=30)
 HUMIDITY_STEP = timedelta(minutes=15)
 MAX_BUMP = 5
@@ -156,6 +157,7 @@ class ZoneEngine:
 
         cool = self._humidity(now, readings, average, cool, reasons)
         heat = min(heat, cool - s.gap) if not bump else min(heat, cool - 1)
+        heat = self._gate_heat(readings, bump, heat, reasons)
 
         offset = st.offset if st.offset is not None else 0.0
         offset = max(-s.max_offset, min(s.max_offset, offset))
@@ -213,6 +215,29 @@ class ZoneEngine:
         )
 
     # ── Pieces ─────────────────────────────────────────────────────────────
+
+    def _gate_heat(
+        self,
+        readings: Readings,
+        bump: Bump | None,
+        heat: float,
+        reasons: list[str],
+    ) -> float:
+        """Hold the heat point down unless it is cold outside.
+
+        A bump toward warmer still heats: someone asked for it.
+        """
+        s, st = self.settings, self.state
+        outdoor = readings.outdoor
+        if outdoor is not None:
+            if st.heat_allowed and outdoor >= s.heat_outdoor_below + HEAT_HYSTERESIS:
+                st.heat_allowed = False
+            elif not st.heat_allowed and outdoor < s.heat_outdoor_below:
+                st.heat_allowed = True
+        if st.heat_allowed or (bump and bump.heat_delta > 0):
+            return heat
+        reasons.append(f"heat held at {s.heat_idle:.0f}°F, {outdoor:.0f}°F outside")
+        return min(heat, s.heat_idle)
 
     def _base_cool(self, now: datetime, readings: Readings) -> float:
         if is_day(now, self.settings):

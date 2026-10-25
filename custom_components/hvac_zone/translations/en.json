@@ -10,14 +10,16 @@
           "room_sensors": "Room temperatures",
           "spread_sensors": "Rooms to balance",
           "humidity_sensor": "Humidity",
-          "outdoor_mean_sensor": "Outdoor 24 h mean temperature"
+          "outdoor_mean_sensor": "Outdoor 24 h mean temperature",
+          "outdoor_sensor": "Outdoor temperature"
         },
         "data_description": {
           "thermostat": "The real thermostat. The zone keeps it in heat/cool and writes only a low/high pair.",
           "room_sensors": "Their average is the temperature the zone controls to.",
           "spread_sensors": "Rooms compared for fan circulation (warmest minus coldest). Leave empty to use the room sensors.",
           "humidity_sensor": "Indoor humidity, for humidity events and the fan's wet-coil guards.",
-          "outdoor_mean_sensor": "A 24-hour mean of outdoor temperature. It sets the day cool point."
+          "outdoor_mean_sensor": "A 24-hour mean of outdoor temperature. It sets the day cool point.",
+          "outdoor_sensor": "The current outdoor temperature. Heat runs only while it is below the cutoff. Leave empty to use the 24-hour mean."
         }
       }
     },
@@ -33,13 +35,15 @@
           "room_sensors": "Room temperatures",
           "spread_sensors": "Rooms to balance",
           "humidity_sensor": "Humidity",
-          "outdoor_mean_sensor": "Outdoor 24 h mean temperature"
+          "outdoor_mean_sensor": "Outdoor 24 h mean temperature",
+          "outdoor_sensor": "Outdoor temperature"
         },
         "data_description": {
           "room_sensors": "Their average is the temperature the zone controls to.",
           "spread_sensors": "Rooms compared for fan circulation (warmest minus coldest). Leave empty to use the room sensors.",
           "humidity_sensor": "Indoor humidity, for humidity events and the fan's wet-coil guards.",
-          "outdoor_mean_sensor": "A 24-hour mean of outdoor temperature. It sets the day cool point."
+          "outdoor_mean_sensor": "A 24-hour mean of outdoor temperature. It sets the day cool point.",
+          "outdoor_sensor": "The current outdoor temperature. Heat runs only while it is below the cutoff. Leave empty to use the 24-hour mean."
         }
       }
     }
@@ -88,6 +92,12 @@
       },
       "gap": {
         "name": "Heat/cool gap"
+      },
+      "heat_outdoor_below": {
+        "name": "Heat only below outdoor"
+      },
+      "heat_idle": {
+        "name": "Heat point when warm outside"
       },
       "bump_degrees": {
         "name": "Bump size"

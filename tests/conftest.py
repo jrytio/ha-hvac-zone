@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.setup import async_setup_component
 from homeassistant.util.unit_system import US_CUSTOMARY_SYSTEM
@@ -14,6 +16,7 @@ from pytest_homeassistant_custom_component.common import (
 from custom_components.hvac_zone.const import (
     CONF_HUMIDITY,
     CONF_OUTDOOR_MEAN,
+    CONF_OUTDOOR_NOW,
     CONF_ROOM_SENSORS,
     CONF_SPREAD_SENSORS,
     CONF_THERMOSTAT,
@@ -24,12 +27,20 @@ THERMOSTAT = "climate.downstairs"
 ROOMS = ["sensor.living_temperature", "sensor.office_temperature"]
 HUMIDITY = "sensor.downstairs_humidity"
 OUTDOOR = "sensor.outdoor_mean"
+OUTDOOR_NOW = "sensor.outdoor_temperature"
 ZONE = "climate.downstairs_zone"
 
 
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations):
     """Let Home Assistant load the integration from custom_components."""
+
+
+@pytest.fixture(autouse=True)
+def no_widen_pause():
+    """Don't wait between the widened band and the target in tests."""
+    with patch("custom_components.hvac_zone.coordinator.WIDEN_PAUSE", 0):
+        yield
 
 
 @pytest.fixture(autouse=True)
@@ -55,6 +66,8 @@ def set_rooms(hass: HomeAssistant, *temps: float, humidity: float = 45) -> None:
         hass.states.async_set(entity_id, str(temp), {"unit_of_measurement": "°F"})
     hass.states.async_set(HUMIDITY, str(humidity), {"unit_of_measurement": "%"})
     hass.states.async_set(OUTDOOR, "60", {"unit_of_measurement": "°F"})
+    # Cold enough that the heat point follows the band.
+    hass.states.async_set(OUTDOOR_NOW, "40", {"unit_of_measurement": "°F"})
 
 
 @pytest.fixture
@@ -89,6 +102,7 @@ def zone_entry(hass: HomeAssistant) -> MockConfigEntry:
             CONF_SPREAD_SENSORS: [],
             CONF_HUMIDITY: HUMIDITY,
             CONF_OUTDOOR_MEAN: OUTDOOR,
+            CONF_OUTDOOR_NOW: OUTDOOR_NOW,
         },
     )
     entry.add_to_hass(hass)

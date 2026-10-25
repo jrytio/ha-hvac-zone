@@ -36,6 +36,7 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_HUMIDITY,
     CONF_OUTDOOR_MEAN,
+    CONF_OUTDOOR_NOW,
     CONF_ROOM_SENSORS,
     CONF_SPREAD_SENSORS,
     CONF_THERMOSTAT,
@@ -81,6 +82,7 @@ class ZoneCoordinator(DataUpdateCoordinator[Decision]):
         self.spread_sensors: list[str] = list(config.get(CONF_SPREAD_SENSORS, []))
         self.humidity_sensor: str | None = config.get(CONF_HUMIDITY)
         self.outdoor_sensor: str | None = config.get(CONF_OUTDOOR_MEAN)
+        self.outdoor_now_sensor: str | None = config.get(CONF_OUTDOOR_NOW)
         self.engine = ZoneEngine(ZoneSettings())
         self.writing = False
         self.fan_enabled = False
@@ -267,6 +269,7 @@ class ZoneCoordinator(DataUpdateCoordinator[Decision]):
             spread_temps=self._numbers(self.spread_sensors),
             humidity=self._number(self.humidity_sensor),
             outdoor_mean=self._number(self.outdoor_sensor),
+            outdoor_now=self._number(self.outdoor_now_sensor),
         )
 
     def _read_thermostat(self) -> Thermostat:

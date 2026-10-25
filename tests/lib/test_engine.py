@@ -32,6 +32,7 @@ class Zone:
             spread_temps=(70.0, 72.0),
             humidity=45.0,
             outdoor_mean=60.0,
+            outdoor_now=40.0,
         )
         self.offset = offset
         self.thermostat = Thermostat(
@@ -356,3 +357,48 @@ def test_a_band_the_thermostat_refuses_is_retried_only_once():
     assert z.writes == 2
     assert "thermostat holds 67/74, not 69/74" in d.status
     assert z.engine.state.override is None
+
+
+# ── Heat only when it is cold outside ─────────────────────────────────────
+
+
+def test_no_heat_on_a_mild_morning():
+    z = Zone()
+    z.readings = replace(z.readings, outdoor_now=58.0)
+    d = z.tick()
+    assert (d.low, d.high) == (62, 74)
+    assert "heat held at 62°F, 58°F outside" in d.status
+
+
+def test_heat_follows_the_band_when_cold_outside():
+    z = Zone()
+    z.readings = replace(z.readings, outdoor_now=44.0)
+    assert (z.tick().low, z.tick().high) == (69, 74)
+
+
+def test_heat_cutoff_has_hysteresis():
+    z = Zone()
+    z.readings = replace(z.readings, outdoor_now=49.0)
+    assert z.tick().low == 69
+    z.readings = replace(z.readings, outdoor_now=50.5)
+    assert z.at(minutes=1).tick().low == 69
+    z.readings = replace(z.readings, outdoor_now=51.0)
+    assert z.at(minutes=1).tick().low == 62
+    z.readings = replace(z.readings, outdoor_now=50.0)
+    assert z.at(minutes=1).tick().low == 62
+    z.readings = replace(z.readings, outdoor_now=49.5)
+    assert z.at(minutes=1).tick().low == 69
+
+
+def test_mean_is_used_without_a_current_reading():
+    z = Zone()
+    z.readings = replace(z.readings, outdoor_mean=65.0, outdoor_now=None)
+    assert z.tick().low == 62
+
+
+def test_warmer_bump_still_heats():
+    z = Zone()
+    z.readings = replace(z.readings, outdoor_now=60.0)
+    z.tick()
+    z.engine.bump(z.now, 2)
+    assert z.at(minutes=1).tick().low == 71

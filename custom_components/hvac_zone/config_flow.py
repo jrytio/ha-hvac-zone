@@ -22,6 +22,7 @@ import probatio as vol
 from .const import (
     CONF_HUMIDITY,
     CONF_OUTDOOR_MEAN,
+    CONF_OUTDOOR_NOW,
     CONF_ROOM_SENSORS,
     CONF_SPREAD_SENSORS,
     CONF_THERMOSTAT,
@@ -47,6 +48,9 @@ def _sensor_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
             EntitySelectorConfig(domain="sensor", device_class="humidity")
         ),
         key(CONF_OUTDOOR_MEAN): EntitySelector(
+            EntitySelectorConfig(domain="sensor", device_class="temperature")
+        ),
+        key(CONF_OUTDOOR_NOW): EntitySelector(
             EntitySelectorConfig(domain="sensor", device_class="temperature")
         ),
     }
